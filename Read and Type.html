@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Typing Practice App</title>
+    <style>
+        /* CSS Styles */
+        * {
+            box-sizing: border-box;
+            font-family: Arial, sans-serif;
+        }
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            background-color: #f4f4f9;
+        }
+        .container {
+            max-width: 600px;
+            padding: 20px;
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+        h1 {
+            margin-bottom: 20px;
+        }
+        textarea {
+            width: 100%;
+            padding: 10px;
+            margin-top: 10px;
+            margin-bottom: 10px;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+            resize: none;
+            max-height: 300px; /* Limit maximum height */
+            overflow-y: auto; /* Add scroll if content exceeds max height */
+        }
+        #typingArea {
+            margin-top: 20px;
+        }
+        #textDisplay {
+            padding: 10px;
+            background-color: #eaeaea;
+            border-radius: 4px;
+            min-height: 50px;
+            text-align: left;
+            white-space: pre-wrap;
+        }
+        .stats {
+            margin-top: 20px;
+        }
+        #textDisplay span.error {
+            color: red;
+            font-weight: bold;
+        }
+        #textDisplay span.correct {
+            color: green;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Typing Practice App</h1>
+        
+        <!-- Text input area for custom text with auto-expand and max height limit -->
+        <textarea id="textInput" placeholder="Paste or type text here..." oninput="autoExpandTextarea(this)"></textarea>
+        <button id="startButton" onclick="startTypingSession()">Start Practice</button>
+
+        <!-- Typing area and feedback stats -->
+        <div id="typingArea" style="display: none;">
+            <div id="textDisplay"></div>
+            <input type="text" id="typingInput" placeholder="Start typing here..." onkeydown="handleTyping(event)">
+        </div>
+
+        <!-- Typing statistics -->
+        <div class="stats">
+            <p>Words per minute (WPM): <span id="wpm">0</span></p>
+            <p>Accuracy: <span id="accuracy">100%</span></p>
+            <p>Errors: <span id="errors">0</span></p>
+        </div>
+    </div>
+
+    <script>
+        // JavaScript Code
+        let startTime;
+        let errors = 0;
+        let wordsArray = [];
+        let wordIndex = 0;
+        let displayLimit = 20;
+        let isTyping = false;
+
+        // Auto-expand textarea based on content with max-height limit
+        function autoExpandTextarea(element) {
+            element.style.height = 'auto';
+            if (element.scrollHeight <= 300) { // Check if scrollHeight is within limit
+                element.style.height = element.scrollHeight + 'px';
+            } else {
+                element.style.height = '300px'; // Set to max-height if exceeded
+            }
+        }
+
+        // Start typing session
+        function startTypingSession() {
+            let textInput = document.getElementById("textInput").value;
+
+            // Remove line breaks and extra spaces in the text input
+            textInput = textInput.replace(/\s+/g, ' ').trim();
+
+            if (textInput) {
+                wordsArray = textInput.split(" ");
+                wordIndex = 0;
+                document.getElementById("typingInput").value = "";
+
+                // Show typing area and reset stats
+                document.getElementById("typingArea").style.display = "block";
+                startTime = new Date();
+                errors = 0;
+                isTyping = true;
+                updateStats(0, 100, 0);
+                updateDisplay();
+            } else {
+                alert("Please paste text to start.");
+            }
+        }
+
+        // Update the display to show only 20 words around the current word
+        function updateDisplay() {
+            const visibleText = wordsArray
+                .slice(wordIndex, wordIndex + displayLimit)
+                .map((word, index) => `<span id="word-${wordIndex + index}">${word}</span>`)
+                .join(" ");
+            document.getElementById("textDisplay").innerHTML = visibleText;
+        }
+
+        // Handle typing input, check with space key press
+        function handleTyping(event) {
+            if (event.key !== " ") return; // Only proceed when Space is pressed
+
+            event.preventDefault(); // Prevent the space from adding in input
+            const inputText = document.getElementById("typingInput").value.trim().toLowerCase();
+            const currentWord = wordsArray[wordIndex].toLowerCase();
+
+            if (inputText === currentWord) {
+                markWordAsCorrect(wordIndex);
+                wordIndex++;
+                document.getElementById("typingInput").value = ""; // Reset input field
+
+                // Update the display to show the next set of words
+                updateDisplay();
+
+                // If we reach the end of the text, end the session
+                if (wordIndex >= wordsArray.length) {
+                    endTypingSession();
+                }
+            } else {
+                markWordAsIncorrect(wordIndex); // Mark as incorrect if mistyped
+            }
+
+            // Update stats
+            const timeSpent = (new Date() - startTime) / 60000; // Convert to minutes
+            const wordsTyped = wordIndex;
+            const wpm = wordsTyped / timeSpent;
+            const accuracy = ((wordsArray.length - errors) / wordsArray.length) * 100;
+            updateStats(wpm.toFixed(2), accuracy.toFixed(2), errors);
+        }
+
+        // Mark word as correct
+        function markWordAsCorrect(index) {
+            const wordSpan = document.getElementById(`word-${index}`);
+            if (wordSpan) {
+                wordSpan.classList.add("correct");
+                wordSpan.classList.remove("error");
+            }
+        }
+
+        // Mark word as incorrect
+        function markWordAsIncorrect(index) {
+            const wordSpan = document.getElementById(`word-${index}`);
+            if (wordSpan && !wordSpan.classList.contains("error")) {
+                wordSpan.classList.add("error");
+                errors++;
+            }
+        }
+
+        // End typing session
+        function endTypingSession() {
+            isTyping = false;
+            alert("Great job! You've completed the typing session.");
+        }
+
+        // Update stats in UI
+        function updateStats(wpm, accuracy, errors) {
+            document.getElementById("wpm").innerText = wpm;
+            document.getElementById("accuracy").innerText = accuracy + "%";
+            document.getElementById("errors").innerText = errors;
+        }
+    </script>
+</body>
+</html>
+

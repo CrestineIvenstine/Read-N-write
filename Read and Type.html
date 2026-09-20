@@ -1,205 +1,531 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Typing Practice App</title>
-    <style>
-        /* CSS Styles */
-        * {
-            box-sizing: border-box;
-            font-family: Arial, sans-serif;
-        }
-        body {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            margin: 0;
-            background-color: #f4f4f9;
-        }
-        .container {
-            max-width: 600px;
-            padding: 20px;
-            background: #fff;
-            border-radius: 8px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-            text-align: center;
-        }
-        h1 {
-            margin-bottom: 20px;
-        }
-        textarea {
-            width: 100%;
-            padding: 10px;
-            margin-top: 10px;
-            margin-bottom: 10px;
-            border-radius: 4px;
-            border: 1px solid #ccc;
-            resize: none;
-            max-height: 300px; /* Limit maximum height */
-            overflow-y: auto; /* Add scroll if content exceeds max height */
-        }
-        #typingArea {
-            margin-top: 20px;
-        }
-        #textDisplay {
-            padding: 10px;
-            background-color: #eaeaea;
-            border-radius: 4px;
-            min-height: 50px;
-            text-align: left;
-            white-space: pre-wrap;
-        }
-        .stats {
-            margin-top: 20px;
-        }
-        #textDisplay span.error {
-            color: red;
-            font-weight: bold;
-        }
-        #textDisplay span.correct {
-            color: green;
-        }
-    </style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Typing Practice</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --background: #f4f4f9;
+      --surface: #fff;
+      --border: #d9dce5;
+      --text: #202331;
+      --muted: #697083;
+      --accent: #4f46e5;
+      --correct: #16834b;
+      --error: #c62828;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      min-height: 100vh;
+      margin: 0;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+      background: var(--background);
+      color: var(--text);
+      font: 16px/1.5 Arial, sans-serif;
+    }
+
+    .container {
+      width: min(100%, 680px);
+      padding: 28px;
+      background: var(--surface);
+      border-radius: 12px;
+      box-shadow: 0 8px 24px rgb(0 0 0 / 10%);
+    }
+
+    h1 { margin: 0 0 20px; text-align: center; }
+    label { display: block; margin-bottom: 6px; font-weight: 700; }
+    #setupArea.hidden { display: none; }
+
+    textarea,
+    input {
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: inherit;
+      font: inherit;
+    }
+
+    textarea {
+      min-height: 48px;
+      max-height: 180px;
+      padding: 10px;
+      resize: none;
+      overflow-y: auto;
+    }
+
+    input {
+      margin-top: 14px;
+      padding: 12px;
+    }
+
+    textarea:focus,
+    input:focus { outline: 3px solid rgb(79 70 229 / 20%); border-color: var(--accent); }
+
+    button {
+      width: 100%;
+      margin-top: 12px;
+      padding: 11px 16px;
+      border: 0;
+      border-radius: 6px;
+      background: var(--accent);
+      color: #fff;
+      cursor: pointer;
+      font: inherit;
+      font-weight: 700;
+    }
+
+    button:hover { filter: brightness(1.08); }
+    button:focus-visible { outline: 3px solid rgb(79 70 229 / 35%); outline-offset: 2px; }
+
+    .typing-area { margin-top: 24px; }
+    .session-controls {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+      margin-top: 12px;
+    }
+    .session-controls button {
+      margin-top: 0;
+      background: #687083;
+      font-size: .9rem;
+    }
+    .session-controls button.active { background: var(--accent); }
+    .session-controls .stop-button { background: var(--error); }
+    .progress-row { margin-top: 16px; }
+    .progress-label { display: flex; justify-content: space-between; margin-bottom: 6px; color: var(--muted); font-size: .9rem; }
+    progress { width: 100%; height: 12px; accent-color: var(--accent); }
+    .text-display {
+      min-height: 78px;
+      padding: 14px;
+      border-radius: 6px;
+      background: #eef0f5;
+      text-align: left;
+      overflow-wrap: anywhere;
+    }
+
+    .word { color: var(--muted); }
+    .word.current { color: var(--text); font-weight: 700; text-decoration: underline; text-decoration-color: var(--accent); text-underline-offset: 4px; }
+    .word.correct { color: var(--correct); }
+    .word.error { color: var(--error); text-decoration: line-through; }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-top: 24px;
+      text-align: center;
+    }
+
+    .stat { padding: 10px 6px; border: 1px solid var(--border); border-radius: 6px; }
+    .stat strong { display: block; font-size: 1.2rem; }
+    .stat small { color: var(--muted); }
+    .status { min-height: 24px; margin: 14px 0 0; color: var(--muted); text-align: center; }
+
+    @media (max-width: 480px) {
+      .container { padding: 20px; }
+      .stats { grid-template-columns: 1fr; }
+    }
+  </style>
 </head>
 <body>
-    <div class="container">
-        <h1>Typing Practice App</h1>
-        
-        <!-- Text input area for custom text with auto-expand and max height limit -->
-        <textarea id="textInput" placeholder="Paste or type text here..." oninput="autoExpandTextarea(this)"></textarea>
-        <button id="startButton" onclick="startTypingSession()">Start Practice</button>
+  <main class="container">
+    <h1>Typing Practice</h1>
 
-        <!-- Typing area and feedback stats -->
-        <div id="typingArea" style="display: none;">
-            <div id="textDisplay"></div>
-            <input type="text" id="typingInput" placeholder="Start typing here..." onkeydown="handleTyping(event)">
-        </div>
+    <div id="setupArea">
+      <label for="textInput">Practice text</label>
+      <textarea id="textInput" rows="1" placeholder="Paste or type text here..." aria-describedby="status"></textarea>
 
-        <!-- Typing statistics -->
-        <div class="stats">
-            <p>Words per minute (WPM): <span id="wpm">0</span></p>
-            <p>Accuracy: <span id="accuracy">100%</span></p>
-            <p>Errors: <span id="errors">0</span></p>
-        </div>
+      <label for="fileInput" style="margin-top: 12px;">Or upload a file</label>
+      <input id="fileInput" type="file"
+        accept=".txt,.md,.csv,.pdf,.docx,text/plain,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        aria-label="Upload a text, PDF, or Word document">
+
+      <label for="displayLimitInput" style="margin-top: 12px;">Words shown at a time</label>
+      <input id="displayLimitInput" type="number" min="5" max="50" value="20"
+        aria-describedby="status">
+
+      <button id="startButton" type="button">Start practice</button>
     </div>
 
-    <script>
-        // JavaScript Code
-        let startTime;
-        let errors = 0;
-        let wordsArray = [];
-        let wordIndex = 0;
-        let displayLimit = 20;
-        let isTyping = false;
+    <section id="typingArea" class="typing-area" hidden aria-live="polite">
+      <div class="progress-row">
+        <div class="progress-label">
+          <span>Progress</span>
+          <span id="progressText">0%</span>
+        </div>
+        <progress id="progressBar" value="0" max="100" aria-label="Typing progress">0%</progress>
+      </div>
+      <div id="textDisplay" class="text-display"></div>
+      <input id="typingInput" type="text" autocomplete="off" autocapitalize="off"
+        spellcheck="false" placeholder="Type the highlighted word and press Space">
+      <div class="session-controls" aria-label="Typing options">
+        <button id="specialCharactersButton" type="button" aria-pressed="false">Ignore special characters</button>
+        <button id="capitalizationButton" type="button" aria-pressed="false">Ignore capitalization</button>
+        <button id="misspellingButton" type="button" aria-pressed="false">Ignore misspelling</button>
+        <button id="skipSymbolsButton" type="button" aria-pressed="false">Skip standalone symbols</button>
+        <button id="stopButton" class="stop-button" type="button">Stop session</button>
+      </div>
+    </section>
 
-        // Auto-expand textarea based on content with max-height limit
-        function autoExpandTextarea(element) {
-            element.style.height = 'auto';
-            if (element.scrollHeight <= 300) { // Check if scrollHeight is within limit
-                element.style.height = element.scrollHeight + 'px';
-            } else {
-                element.style.height = '300px'; // Set to max-height if exceeded
-            }
+    <div class="stats" aria-label="Typing statistics">
+      <div class="stat"><strong id="wpm">0</strong><small>WPM</small></div>
+      <div class="stat"><strong id="accuracy">100%</strong><small>Accuracy</small></div>
+      <div class="stat"><strong id="errors">0</strong><small>Errors</small></div>
+    </div>
+    <p id="status" class="status" role="status"></p>
+  </main>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.8.0/mammoth.browser.min.js"></script>
+  <script>
+    const textInput = document.getElementById("textInput");
+    const fileInput = document.getElementById("fileInput");
+    const displayLimitInput = document.getElementById("displayLimitInput");
+    const startButton = document.getElementById("startButton");
+    const setupArea = document.getElementById("setupArea");
+    const typingArea = document.getElementById("typingArea");
+    const textDisplay = document.getElementById("textDisplay");
+    const typingInput = document.getElementById("typingInput");
+    const specialCharactersButton = document.getElementById("specialCharactersButton");
+    const capitalizationButton = document.getElementById("capitalizationButton");
+    const misspellingButton = document.getElementById("misspellingButton");
+    const skipSymbolsButton = document.getElementById("skipSymbolsButton");
+    const stopButton = document.getElementById("stopButton");
+    const progressBar = document.getElementById("progressBar");
+    const progressText = document.getElementById("progressText");
+    const status = document.getElementById("status");
+    const wpmOutput = document.getElementById("wpm");
+    const accuracyOutput = document.getElementById("accuracy");
+    const errorsOutput = document.getElementById("errors");
+
+    let words = [];
+    let currentIndex = 0;
+    let errorCount = 0;
+    let startedAt = 0;
+    let running = false;
+    let ignoreSpecialCharacters = false;
+    let ignoreCapitalization = false;
+    let ignoreMisspelling = false;
+    let skipSymbols = false;
+
+    function getDisplayLimit() {
+      const value = Number.parseInt(displayLimitInput.value, 10);
+      return Number.isFinite(value) ? Math.min(50, Math.max(5, value)) : 20;
+    }
+
+    function resizeTextarea() {
+      textInput.style.height = "auto";
+      textInput.style.height = `${Math.min(textInput.scrollHeight, 180)}px`;
+    }
+
+    function resetStats() {
+      wpmOutput.textContent = "0";
+      accuracyOutput.textContent = "100%";
+      errorsOutput.textContent = "0";
+    }
+
+    function updateProgress() {
+      const percent = words.length ? (currentIndex / words.length) * 100 : 0;
+      progressBar.value = percent;
+      progressText.textContent = `${percent.toFixed(0)}% (${currentIndex}/${words.length} words)`;
+    }
+
+    function updateStats() {
+      const minutes = (Date.now() - startedAt) / 60000;
+      const completedWords = currentIndex;
+      const wpm = minutes > 0 ? completedWords / minutes : 0;
+      const accuracy = words.length ? Math.max(0, ((words.length - errorCount) / words.length) * 100) : 100;
+
+      wpmOutput.textContent = wpm.toFixed(0);
+      accuracyOutput.textContent = `${accuracy.toFixed(0)}%`;
+      errorsOutput.textContent = String(errorCount);
+      updateProgress();
+    }
+
+    function renderWords() {
+      const start = Math.max(0, currentIndex);
+      const end = Math.min(words.length, start + getDisplayLimit());
+      textDisplay.replaceChildren();
+
+      for (let index = start; index < end; index += 1) {
+        const span = document.createElement("span");
+        span.className = "word";
+        span.textContent = words[index];
+        if (index < currentIndex) span.classList.add("correct");
+        if (index === currentIndex) span.classList.add("current");
+        textDisplay.append(span);
+        if (index < end - 1) textDisplay.append(" ");
+      }
+    }
+
+    function isStandaloneSymbol(word) {
+      return /^[^\p{L}\p{N}]+$/u.test(word);
+    }
+
+    function skipStandaloneSymbols() {
+      if (!skipSymbols) return;
+
+      while (currentIndex < words.length && isStandaloneSymbol(words[currentIndex])) {
+        currentIndex += 1;
+      }
+    }
+
+    function finishSession() {
+      running = false;
+      typingInput.disabled = true;
+      setupArea.classList.remove("hidden");
+      startButton.textContent = "Start again";
+      status.textContent = "Great job! You completed the practice.";
+      updateStats();
+    }
+
+    function stopSession() {
+      if (!running) return;
+      running = false;
+      typingInput.disabled = true;
+      typingInput.value = "";
+      typingArea.hidden = true;
+      setupArea.classList.remove("hidden");
+      status.textContent = `Session stopped at ${progressText.textContent}.`;
+      updateProgress();
+    }
+
+    function startSession() {
+      const text = textInput.value.trim().replace(/\s+/g, " ");
+      if (!text) {
+        status.textContent = "Enter some text or upload a file before starting.";
+        textInput.focus();
+        return;
+      }
+
+      words = text.split(" ");
+      currentIndex = 0;
+      errorCount = 0;
+      startedAt = Date.now();
+      running = true;
+      setupArea.classList.add("hidden");
+      typingArea.hidden = false;
+      typingInput.disabled = false;
+      typingInput.value = "";
+      skipStandaloneSymbols();
+      status.textContent = "Type each word and press Space to check it.";
+      resetStats();
+      updateProgress();
+      renderWords();
+      if (currentIndex >= words.length) {
+        finishSession();
+        return;
+      }
+      typingInput.focus();
+    }
+
+    function normalizeImportedText(value) {
+      return String(value || "")
+        .replace(/(\p{L})-\r?\n\s*(?=\p{L})/gu, "$1")
+        .replace(/\s+/g, " ")
+        .trim();
+    }
+
+    function loadImportedText(file, importedText) {
+      const text = normalizeImportedText(importedText);
+      if (!text) {
+        status.textContent = "The selected file does not contain readable text.";
+        return;
+      }
+
+      textInput.value = text;
+      resizeTextarea();
+      status.textContent = `Loaded ${file.name}. Press Start practice to begin.`;
+    }
+
+    async function extractPdfText(file) {
+      if (!window.pdfjsLib) {
+        throw new Error("PDF support is unavailable because the PDF library did not load.");
+      }
+
+      window.pdfjsLib.GlobalWorkerOptions.workerSrc =
+        "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+      const pdf = await window.pdfjsLib.getDocument({ data: await file.arrayBuffer() }).promise;
+      const pages = [];
+
+      for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
+        const page = await pdf.getPage(pageNumber);
+        const content = await page.getTextContent();
+        const lines = [];
+
+        for (const item of content.items) {
+          const text = String(item.str || "");
+          if (!text) continue;
+
+          const transform = item.transform || [];
+          const x = Number(transform[4]) || 0;
+          const y = Number(transform[5]) || 0;
+          const fontSize = Math.abs(Number(transform[3])) || Math.abs(Number(transform[0])) || 10;
+          let line = lines.find((candidate) => Math.abs(candidate.y - y) <= fontSize * 0.45);
+
+          if (!line) {
+            line = { y, items: [] };
+            lines.push(line);
+          }
+
+          line.items.push({
+            x,
+            endX: x + (Number(item.width) || 0),
+            text,
+            fontSize
+          });
         }
 
-        // Start typing session
-        function startTypingSession() {
-            let textInput = document.getElementById("textInput").value;
+        lines.sort((first, second) => second.y - first.y);
+        pages.push(lines.map((line) => {
+          line.items.sort((first, second) => first.x - second.x);
+          let lineText = "";
 
-            // Remove line breaks and extra spaces in the text input
-            textInput = textInput.replace(/\s+/g, ' ').trim();
+          for (const item of line.items) {
+            const previous = line.items[line.items.indexOf(item) - 1];
+            const gap = previous ? item.x - previous.endX : 0;
+            const needsSpace = previous &&
+              !/\s$/.test(lineText) &&
+              !/^\s/.test(item.text) &&
+              gap > item.fontSize * 0.15;
+            lineText += `${needsSpace ? " " : ""}${item.text}`;
+          }
 
-            if (textInput) {
-                wordsArray = textInput.split(" ");
-                wordIndex = 0;
-                document.getElementById("typingInput").value = "";
+          return lineText;
+        }).join("\n"));
+      }
 
-                // Show typing area and reset stats
-                document.getElementById("typingArea").style.display = "block";
-                startTime = new Date();
-                errors = 0;
-                isTyping = true;
-                updateStats(0, 100, 0);
-                updateDisplay();
-            } else {
-                alert("Please paste text to start.");
-            }
+      return pages.join(" ");
+    }
+
+    async function extractWordText(file) {
+      if (!window.mammoth) {
+        throw new Error("Word support is unavailable because the Word library did not load.");
+      }
+
+      const result = await window.mammoth.extractRawText({ arrayBuffer: await file.arrayBuffer() });
+      return result.value;
+    }
+
+    async function loadTextFile(file) {
+      if (!file) return;
+
+      const extension = file.name.split(".").pop().toLowerCase();
+      status.textContent = `Reading ${file.name}...`;
+
+      try {
+        if (extension === "pdf" || file.type === "application/pdf") {
+          loadImportedText(file, await extractPdfText(file));
+          return;
         }
 
-        // Update the display to show only 20 words around the current word
-        function updateDisplay() {
-            const visibleText = wordsArray
-                .slice(wordIndex, wordIndex + displayLimit)
-                .map((word, index) => `<span id="word-${wordIndex + index}">${word}</span>`)
-                .join(" ");
-            document.getElementById("textDisplay").innerHTML = visibleText;
+        if (extension === "docx" ||
+          file.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") {
+          loadImportedText(file, await extractWordText(file));
+          return;
         }
 
-        // Handle typing input, check with space key press
-        function handleTyping(event) {
-            if (event.key !== " ") return; // Only proceed when Space is pressed
+        loadImportedText(file, await file.text());
+      } catch (error) {
+        console.error("File import failed:", error);
+        status.textContent = `Unable to read ${file.name}. Make sure it is a supported, text-based file.`;
+      }
+    }
 
-            event.preventDefault(); // Prevent the space from adding in input
-            const inputText = document.getElementById("typingInput").value.trim().toLowerCase();
-            const currentWord = wordsArray[wordIndex].toLowerCase();
+    function checkWord() {
+      if (!running) return;
+      const rawTyped = typingInput.value.trim();
+      let typed = rawTyped;
+      let expected = words[currentIndex];
 
-            if (inputText === currentWord) {
-                markWordAsCorrect(wordIndex);
-                wordIndex++;
-                document.getElementById("typingInput").value = ""; // Reset input field
+      if (ignoreSpecialCharacters) {
+        typed = typed.replace(/[^\p{L}\p{N}\s]/gu, "");
+        expected = expected.replace(/[^\p{L}\p{N}\s]/gu, "");
+      }
+      if (ignoreCapitalization) {
+        typed = typed.toLocaleLowerCase();
+        expected = expected.toLocaleLowerCase();
+      }
 
-                // Update the display to show the next set of words
-                updateDisplay();
+      const matches = ignoreMisspelling ||
+        (typed === expected && (typed.length > 0 || expected.length === 0));
 
-                // If we reach the end of the text, end the session
-                if (wordIndex >= wordsArray.length) {
-                    endTypingSession();
-                }
-            } else {
-                markWordAsIncorrect(wordIndex); // Mark as incorrect if mistyped
-            }
-
-            // Update stats
-            const timeSpent = (new Date() - startTime) / 60000; // Convert to minutes
-            const wordsTyped = wordIndex;
-            const wpm = wordsTyped / timeSpent;
-            const accuracy = ((wordsArray.length - errors) / wordsArray.length) * 100;
-            updateStats(wpm.toFixed(2), accuracy.toFixed(2), errors);
+      if (rawTyped && matches) {
+        currentIndex += 1;
+        typingInput.value = "";
+        skipStandaloneSymbols();
+        if (currentIndex >= words.length) {
+          finishSession();
+          return;
         }
+        renderWords();
+      } else {
+        errorCount += 1;
+        status.textContent = "Not quite — try the highlighted word again.";
+      }
+      updateStats();
+    }
 
-        // Mark word as correct
-        function markWordAsCorrect(index) {
-            const wordSpan = document.getElementById(`word-${index}`);
-            if (wordSpan) {
-                wordSpan.classList.add("correct");
-                wordSpan.classList.remove("error");
-            }
-        }
-
-        // Mark word as incorrect
-        function markWordAsIncorrect(index) {
-            const wordSpan = document.getElementById(`word-${index}`);
-            if (wordSpan && !wordSpan.classList.contains("error")) {
-                wordSpan.classList.add("error");
-                errors++;
-            }
-        }
-
-        // End typing session
-        function endTypingSession() {
-            isTyping = false;
-            alert("Great job! You've completed the typing session.");
-        }
-
-        // Update stats in UI
-        function updateStats(wpm, accuracy, errors) {
-            document.getElementById("wpm").innerText = wpm;
-            document.getElementById("accuracy").innerText = accuracy + "%";
-            document.getElementById("errors").innerText = errors;
-        }
-    </script>
+    textInput.addEventListener("input", resizeTextarea);
+    fileInput.addEventListener("change", (event) => {
+      const file = event.target.files && event.target.files[0];
+      loadTextFile(file);
+    });
+    specialCharactersButton.addEventListener("click", () => {
+      ignoreSpecialCharacters = !ignoreSpecialCharacters;
+      specialCharactersButton.classList.toggle("active", ignoreSpecialCharacters);
+      specialCharactersButton.setAttribute("aria-pressed", String(ignoreSpecialCharacters));
+      status.textContent = ignoreSpecialCharacters
+        ? "Special characters will be ignored."
+        : "Special characters are required.";
+    });
+    capitalizationButton.addEventListener("click", () => {
+      ignoreCapitalization = !ignoreCapitalization;
+      capitalizationButton.classList.toggle("active", ignoreCapitalization);
+      capitalizationButton.setAttribute("aria-pressed", String(ignoreCapitalization));
+      status.textContent = ignoreCapitalization
+        ? "Capitalization will be ignored."
+        : "Capitalization is required.";
+    });
+    misspellingButton.addEventListener("click", () => {
+      ignoreMisspelling = !ignoreMisspelling;
+      misspellingButton.classList.toggle("active", ignoreMisspelling);
+      misspellingButton.setAttribute("aria-pressed", String(ignoreMisspelling));
+      status.textContent = ignoreMisspelling
+        ? "Misspellings will be accepted."
+        : "Misspellings will be checked.";
+    });
+    skipSymbolsButton.addEventListener("click", () => {
+      skipSymbols = !skipSymbols;
+      skipSymbolsButton.classList.toggle("active", skipSymbols);
+      skipSymbolsButton.setAttribute("aria-pressed", String(skipSymbols));
+      if (running) {
+        skipStandaloneSymbols();
+        updateStats();
+        renderWords();
+        if (currentIndex >= words.length) finishSession();
+      }
+      status.textContent = skipSymbols
+        ? "Standalone symbols will be skipped."
+        : "Standalone symbols will be typed normally.";
+    });
+    stopButton.addEventListener("click", stopSession);
+    startButton.addEventListener("click", startSession);
+    typingInput.addEventListener("keydown", (event) => {
+      if (event.key === " ") {
+        event.preventDefault();
+        checkWord();
+      }
+    });
+    setInterval(() => {
+      if (running) updateStats();
+    }, 1000);
+  </script>
 </body>
 </html>
-

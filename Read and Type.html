@@ -126,6 +126,17 @@
     .stat strong { display: block; font-size: 1.2rem; }
     .stat small { color: var(--muted); }
     .status { min-height: 24px; margin: 14px 0 0; color: var(--muted); text-align: center; }
+    .file-help { margin: 6px 0 0; color: var(--muted); font-size: .85rem; }
+    .file-drop-zone {
+      padding: 12px;
+      border: 2px dashed var(--border);
+      border-radius: 8px;
+      transition: border-color .15s, background-color .15s;
+    }
+    .file-drop-zone.drag-over {
+      border-color: var(--accent);
+      background: rgb(79 70 229 / 8%);
+    }
 
     @media (max-width: 480px) {
       .container { padding: 20px; }
@@ -141,10 +152,13 @@
       <label for="textInput">Practice text</label>
       <textarea id="textInput" rows="1" placeholder="Paste or type text here..." aria-describedby="status"></textarea>
 
-      <label for="fileInput" style="margin-top: 12px;">Or upload a file</label>
-      <input id="fileInput" type="file"
-        accept=".txt,.md,.csv,.pdf,.docx,text/plain,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-        aria-label="Upload a text, PDF, or Word document">
+      <div id="fileDropZone" class="file-drop-zone">
+        <label for="fileInput">Upload or drag a file here</label>
+        <input id="fileInput" type="file"
+          accept=".txt,.md,.csv,.pdf,.docx,.pptx,text/plain,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.presentationml.presentation"
+          aria-label="Upload a text, PDF, Word, or PowerPoint document">
+        <p class="file-help">Supported uploads: TXT, Markdown, CSV, PDF, Word (.docx), and PowerPoint (.pptx).</p>
+      </div>
 
       <label for="displayLimitInput" style="margin-top: 12px;">Words shown at a time</label>
       <input id="displayLimitInput" type="number" min="5" max="50" value="20"
@@ -183,9 +197,11 @@
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.8.0/mammoth.browser.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   <script>
     const textInput = document.getElementById("textInput");
     const fileInput = document.getElementById("fileInput");
+    const fileDropZone = document.getElementById("fileDropZone");
     const displayLimitInput = document.getElementById("displayLimitInput");
     const startButton = document.getElementById("startButton");
     const setupArea = document.getElementById("setupArea");
@@ -413,6 +429,31 @@
       return result.value;
     }
 
+    async function extractPowerPointText(file) {
+      if (!window.JSZip) {
+        throw new Error("PowerPoint support is unavailable because the ZIP library did not load.");
+      }
+
+      const archive = await window.JSZip.loadAsync(await file.arrayBuffer());
+      const slideNames = Object.keys(archive.files)
+        .filter((name) => /^ppt\/slides\/slide\d+\.xml$/i.test(name))
+        .sort((first, second) => {
+          const firstNumber = Number(first.match(/slide(\d+)\.xml/i)[1]);
+          const secondNumber = Number(second.match(/slide(\d+)\.xml/i)[1]);
+          return firstNumber - secondNumber;
+        });
+      const slides = [];
+
+      for (const slideName of slideNames) {
+        const xml = await archive.files[slideName].async("text");
+        const document = new DOMParser().parseFromString(xml, "application/xml");
+        const textNodes = Array.from(document.getElementsByTagNameNS("*", "t"));
+        slides.push(textNodes.map((node) => node.textContent || "").join(" "));
+      }
+
+      return slides.join("\n");
+    }
+
     async function loadTextFile(file) {
       if (!file) return;
 
@@ -428,6 +469,12 @@
         if (extension === "docx" ||
           file.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") {
           loadImportedText(file, await extractWordText(file));
+          return;
+        }
+
+        if (extension === "pptx" ||
+          file.type === "application/vnd.openxmlformats-officedocument.presentationml.presentation") {
+          loadImportedText(file, await extractPowerPointText(file));
           return;
         }
 
@@ -475,6 +522,24 @@
     textInput.addEventListener("input", resizeTextarea);
     fileInput.addEventListener("change", (event) => {
       const file = event.target.files && event.target.files[0];
+      loadTextFile(file);
+    });
+    ["dragenter", "dragover"].forEach((eventName) => {
+      fileDropZone.addEventListener(eventName, (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        fileDropZone.classList.add("drag-over");
+      });
+    });
+    ["dragleave", "drop"].forEach((eventName) => {
+      fileDropZone.addEventListener(eventName, (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        fileDropZone.classList.remove("drag-over");
+      });
+    });
+    fileDropZone.addEventListener("drop", (event) => {
+      const file = event.dataTransfer.files && event.dataTransfer.files[0];
       loadTextFile(file);
     });
     specialCharactersButton.addEventListener("click", () => {
